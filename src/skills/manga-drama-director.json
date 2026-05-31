@@ -1,0 +1,22 @@
+{
+  "id": "manga-drama-director",
+  "name": "漫剧导演 Skill",
+  "version": "0.1.0",
+  "description": "将小说或短剧文本拆解为导演 DSL，并编译成稳定的生图 Prompt。",
+  "promptStyle": "premium vertical manga-drama storyboard frame, cinematic lighting, expressive character acting, clean linework, detailed environment, production-ready shot design",
+  "negativePrompt": "low quality, blurry, deformed hands, extra fingers, duplicate face, inconsistent costume, random text, watermark, logo, bad anatomy, cropped head",
+  "shotRules": [
+    "每个镜头只表达一个剧情动作或情绪转折",
+    "优先保持角色服装、发型、年龄、气质一致",
+    "镜头语言必须包含景别、机位、镜头运动和情绪",
+    "场景资产和风格参考必须显式参与 Prompt 编译"
+  ],
+  "qualityRules": [
+    "角色一致性",
+    "场景一致性",
+    "表情与剧情一致",
+    "构图可读",
+    "无文字水印",
+    "无明显肢体错误"
+  ]
+}

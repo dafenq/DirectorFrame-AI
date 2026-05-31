@@ -1,0 +1,53 @@
+{
+    "name":  "manga-shot-factory-desktop",
+    "version":  "0.1.0",
+    "description":  "Windows desktop app for AI manga/short-drama storyboard batch production with director DSL and prompt compiler.",
+    "main":  "src/main/main.js",
+    "author":  "Codex",
+    "license":  "UNLICENSED",
+    "private":  false,
+    "scripts":  {
+                    "start":  "electron .",
+                    "test":  "node scripts/smoke-test.js",
+                    "pack":  "electron-builder --win --dir",
+                    "dist":  "electron-builder --win nsis"
+                },
+    "build":  {
+                  "appId":  "com.codex.mangaShotFactory",
+                  "productName":  "AI Manga Shot Factory",
+                  "directories":  {
+                                      "output":  "release"
+                                  },
+                  "files":  [
+                                "src/**/*",
+                                "build/**/*",
+                                "package.json"
+                            ],
+                  "win":  {
+                              "target":  "nsis",
+                              "artifactName":  "${productName}-${version}-Setup.${ext}",
+                              "icon":  "build/icon.ico",
+                              "signingHashAlgorithms":  [
+                                                            "sha256"
+                                                        ]
+                          },
+                  "nsis":  {
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true
+                           },
+                  "publish":  [
+                                  {
+                                      "provider":  "generic",
+                                      "url":  "https://updates.example.com/ai-manga-shot-factory/"
+                                  }
+                              ],
+                  "detectUpdateChannel":  false
+              },
+    "devDependencies":  {
+                            "electron":  "^31.7.7",
+                            "electron-builder":  "^24.13.3"
+                        },
+    "dependencies":  {
+                         "electron-updater":  "^6.3.9"
+                     }
+}

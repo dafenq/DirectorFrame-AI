@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Manga Shot Factory</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">SF</div>
+          <div>
+            <strong>Shot Factory</strong>
+            <span>导演 DSL 分镜工厂</span>
+          </div>
+        </div>
+
+        <nav class="tool-stack" aria-label="主要操作">
+          <div class="button-grid quick-actions">
+            <button id="newProjectBtn">新建</button>
+            <button id="openProjectBtn">打开</button>
+            <button id="saveProjectBtn">保存</button>
+            <button id="exportBtn">归档</button>
+          </div>
+          <button id="importScriptBtn" class="wide-action">导入小说 / 剧本</button>
+          <div class="button-grid">
+            <button data-import="character">角色</button>
+            <button data-import="scene">场景</button>
+            <button data-import="style">风格</button>
+          </div>
+          <div class="generation-actions">
+            <button id="generateBtn" class="primary">批量生成分镜图</button>
+            <button id="cancelGenerateBtn" disabled>取消</button>
+          </div>
+          <div class="button-grid">
+            <button id="resumeBatchBtn">恢复任务</button>
+            <button id="selfCheckBtn">生产自检</button>
+          </div>
+          <button id="checkUpdateBtn" class="quiet-action">检查更新</button>
+        </nav>
+
+        <section class="panel settings-panel">
+          <h2>项目设置</h2>
+          <label>项目名<input id="projectName" /></label>
+          <label>Provider<select id="provider"><option value="openai">GPT Image</option><option value="custom">自定义平台</option></select></label>
+          <label>API Key<input id="apiKey" type="password" placeholder="试生产阶段保存在项目文件中" /></label>
+          <label class="provider-openai-field">API Base URL<input id="apiBaseUrl" placeholder="https://api.openai.com/v1" /></label>
+          <label class="provider-custom-field">自定义 Endpoint<input id="customEndpoint" placeholder="完整生成接口地址" /></label>
+          <label>第三方 Skill JSON<input id="skillPath" placeholder="可选：外部 skill JSON 完整路径" /></label>
+          <div id="providerHint" class="provider-hint"></div>
+          <div class="form-row">
+            <label>模型<input id="model" /></label>
+            <label>画幅<select id="size"><option value="16:9">16:9 横屏</option><option value="9:16">9:16 竖屏</option><option value="3:4">3:4 竖图</option><option value="4:3">4:3 横图</option><option value="1:1">1:1 方图</option><option value="3:2">3:2 横图</option><option value="2:3">2:3 竖图</option><option value="auto">auto</option></select></label>
+          </div>
+          <div class="form-row">
+            <label>质量<select id="quality"><option>high</option><option>medium</option><option>low</option><option>auto</option></select></label>
+            <label>格式<select id="outputFormat"><option>png</option><option>webp</option><option>jpeg</option></select></label>
+          </div>
+          <div class="form-row three-cols">
+            <label>审核<select id="moderation"><option>auto</option><option>low</option></select></label>
+            <label>重试<input id="retryLimit" type="number" min="0" max="5" /></label>
+            <label>超时<input id="requestTimeoutSeconds" type="number" min="30" max="900" /></label>
+          </div>
+          <div class="form-row">
+            <label>视觉质检<select id="visionQualityEnabled"><option value="false">关闭</option><option value="true">开启</option></select></label>
+            <label>视觉模型<input id="visionModel" placeholder="gpt-4o-mini" /></label>
+          </div>
+        </section>
+
+        <section class="panel compact process-panel">
+          <h2>进程反馈</h2>
+          <div id="processFeedback" class="process-feedback info"><strong>等待操作</strong></div>
+          <div id="generationProgress" class="generation-progress" hidden>
+            <div><span id="progressText">等待生成</span><strong id="progressElapsed">0s</strong></div>
+            <progress id="progressBar" max="1" value="0"></progress>
+          </div>
+          <div id="processLogList" class="process-log-list"></div>
+        </section>
+
+        <section class="panel compact">
+          <h2>资产库</h2>
+          <div id="assetSummary"></div>
+        </section>
+
+        <section class="panel compact">
+          <h2>生产自检</h2>
+          <div id="selfCheckSummary" class="self-check-summary">尚未运行</div>
+          <div id="selfCheckList"></div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="project-head">
+            <h1 id="projectTitle">未命名漫剧项目</h1>
+            <p id="projectMeta">0 shots</p>
+          </div>
+          <div class="topbar-actions">
+            <div id="shotStats" class="stat-strip"></div>
+            <div class="view-toggle" role="tablist" aria-label="视图切换">
+              <button id="viewBoardBtn" class="active">画布</button>
+              <button id="viewCompactBtn">紧凑</button>
+            </div>
+            <div class="zoom-controls">
+              <button id="zoomOutBtn" aria-label="缩小">-</button>
+              <span id="zoomLabel">100%</span>
+              <button id="zoomInBtn" aria-label="放大">+</button>
+            </div>
+          </div>
+        </header>
+
+        <section id="canvasViewport" class="canvas-viewport">
+          <div class="canvas-hud">
+            <span>Ctrl + 滚轮缩放</span>
+            <span>拖拽卡片调整镜头排布</span>
+            <span>拖拽资产到镜头绑定参考</span>
+          </div>
+          <div id="canvas" class="canvas"></div>
+        </section>
+      </main>
+
+      <aside class="inspector">
+        <div id="emptyInspector" class="empty-state">选择一个镜头后，可以在这里调整导演 DSL、套用镜头语言、检查 Prompt 和生成记录。</div>
+        <div id="shotInspector" hidden>
+          <div class="inspector-head">
+            <div>
+              <h2 id="inspectTitle"></h2>
+              <p id="inspectSubtitle"></p>
+            </div>
+            <div class="inspector-actions">
+              <span id="inspectStatus" class="status-pill"></span>
+              <button id="generateShotBtn" class="mini-primary">生成当前镜头</button>
+            </div>
+          </div>
+
+          <div class="inspector-tabs">
+            <button class="active" data-tab="director">导演</button>
+            <button data-tab="prompt">Prompt</button>
+            <button data-tab="qa">质检</button>
+          </div>
+
+          <section class="tab-panel" data-panel="director">
+            <label>标题<input id="shotTitle" /></label>
+            <div id="shotLanguageSummary" class="language-summary"></div>
+            <div id="languagePalette" class="language-palette"></div>
+            <label>剧情拍点<textarea id="shotBeat" spellcheck="false"></textarea></label>
+            <label>表演调度<textarea id="shotBlocking" spellcheck="false"></textarea></label>
+            <label>镜头 DSL<textarea id="shotDsl" spellcheck="false"></textarea></label>
+          </section>
+
+          <section class="tab-panel" data-panel="prompt" hidden>
+            <label>Prompt<textarea id="shotPrompt" spellcheck="false"></textarea></label>
+            <label>Negative Prompt<textarea id="negativePrompt" spellcheck="false"></textarea></label>
+          </section>
+
+          <section class="tab-panel" data-panel="qa" hidden>
+            <div class="quality-box">
+              <h3>质检</h3>
+              <div id="qualityList"></div>
+            </div>
+            <div class="quality-box">
+              <h3>生成记录</h3>
+              <div id="generationLog"></div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>
