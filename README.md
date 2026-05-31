@@ -1,144 +1,294 @@
-# AI Manga Shot Factory
+# DirectorFrame AI 使用说明
 
-Windows Electron app for manga / short-drama storyboard production. It imports scripts, builds director DSL, compiles prompts, calls image generation providers, archives generated assets, and keeps a resumable batch queue.
+DirectorFrame AI 是一款面向漫剧、短剧、小说改编和分镜创作的 AI 分镜生产桌面应用。它通过“导演 DSL + Prompt Compiler + Skill 插件 + 无限画布”把剧情拆解成镜头，并批量生成可管理、可归档、可质检的分镜图。
 
-## Run
+## 1. 安装与启动
+
+### 开发模式启动
 
 ```powershell
 npm install
 npm start
 ```
 
-PowerShell may block `npm.ps1` on some Windows machines. If that happens, use:
+如果 PowerShell 拦截 `npm.ps1`，使用：
 
 ```powershell
+npm.cmd install
 npm.cmd start
 ```
 
-## API Providers
-
-### GPT Image / OpenAI-compatible
-
-Use Provider `GPT Image`.
-
-- `API Base URL`: `https://api.openai.com/v1`, or a third-party OpenAI-compatible base URL such as `https://example.com/v1`
-- `API Key`: your provider key
-- `Model`: for OpenAI, `gpt-image-1.5`, `gpt-image-1`, or `gpt-image-1-mini`
-
-The app calls:
-
-```text
-POST {API Base URL}/images/generations
-```
-
-It supports OpenAI-style responses such as:
-
-```json
-{ "data": [{ "b64_json": "..." }] }
-```
-
-and URL responses such as:
-
-```json
-{ "data": [{ "url": "https://..." }] }
-```
-
-### Custom Provider
-
-Use Provider `Custom Provider` when your image service has its own full endpoint.
-
-- `Custom Endpoint`: full generation URL, for example `https://example.com/api/generate`
-- `API Key`: optional; when provided it is sent as `Authorization: Bearer <key>`
-
-The app sends both camelCase and snake_case fields for broad compatibility:
-
-```json
-{
-  "prompt": "...",
-  "negativePrompt": "...",
-  "negative_prompt": "...",
-  "model": "...",
-  "size": "1536x1024",
-  "aspectRatio": "16:9",
-  "aspect_ratio": "16:9",
-  "quality": "high",
-  "outputFormat": "png",
-  "output_format": "png"
-}
-```
-
-Supported custom response fields include `imageUrl`, `image_url`, `url`, `b64_json`, `base64`, `images[0]`, `artifacts[0]`, and OpenAI-compatible `data[0]`.
-
-Vision QA uses an OpenAI-compatible chat/vision endpoint. When generation uses `Custom Provider`, the app will not send that API key to the default OpenAI URL unless you explicitly configure an OpenAI-compatible `API Base URL`.
-
-## Third-Party Skill JSON
-
-Project settings include `Third-party Skill JSON`. Paste a full local path to an external skill JSON file when you want another prompt/style skill to drive prompt compilation.
-
-Compatible fields:
-
-```json
-{
-  "id": "third-party-style",
-  "name": "Third Party Style Skill",
-  "version": "1.0.0",
-  "promptStyle": "cinematic style text added to every prompt",
-  "negativePrompt": "tokens to avoid",
-  "shotRules": ["single dramatic action"],
-  "qualityRules": ["style consistency", "readable composition", "no watermark"]
-}
-```
-
-If the path is empty, the app uses the built-in `src/skills/manga-drama-director.json`.
-
-Built-in optional skill:
-
-- `src/skills/storyboard-mode-director.json`: story-first storyboard mode director skill. It chooses single-frame, 4-panel, 6-panel, or 9-panel storyboard mode from the user's request, then builds character, scene, spatial blocking, shot table, and AI image prompts around the plot.
-
-## Test And Build
+### 打包 Windows 安装包
 
 ```powershell
-npm.cmd test
-npm.cmd run pack
+npm.cmd run dist
 ```
 
-`npm.cmd test` runs provider and smoke tests without making real network requests.
-
-## Project Layout
+打包完成后，安装包会生成在：
 
 ```text
-src/main/       Electron main process and IPC
-src/preload/    Safe renderer bridge
-src/renderer/   App UI
-src/core/       Provider, DSL, prompt compiler, quality checks, queue, assets
-src/skills/     Built-in storyboard skill
-scripts/        Smoke tests
+release/
 ```
 
-## GitHub Repository Setup
+## 2. 基础工作流
 
-This project is prepared for GitHub as a Windows Electron repository.
+推荐使用流程：
 
-Recommended first push:
+1. 新建或打开项目。
+2. 导入小说、剧本或剧情文本。
+3. 导入角色参考图、场景参考图、风格参考图。
+4. 在无限画布中调整镜头卡片和素材节点位置。
+5. 选择单个镜头生成，或批量生成全部镜头。
+6. 查看生成记录、错误日志和质检状态。
+7. 导出项目归档。
+
+## 3. 配置生图 API
+
+左侧“项目设置”中需要配置：
+
+- `Provider`：选择 `GPT Image` 或 `自定义平台`
+- `API Key`：填写你的平台密钥
+- `API Base URL`：OpenAI 或兼容平台地址，例如：`https://api.openai.com/v1`
+- `模型`：例如 `gpt-image-1.5`
+- `画幅`：支持 `16:9`、`9:16`、`3:4`、`1:1`、`3:2` 等
+- `超时秒数`：单次生成等待时间，默认 180 秒
+- `重试`：失败后自动重试次数
+
+如果使用自定义平台，请填写完整的 `自定义 Endpoint`。系统会向该地址发送 Prompt、画幅、模型、质量和镜头数据。
+
+## 4. 导入剧本
+
+点击左侧 `导入小说 / 剧本`，选择 `.txt` 或 `.md` 文件。
+
+系统会自动将文本拆解为多个镜头，并为每个镜头生成基础导演 DSL 和 Prompt。
+
+每个镜头卡片包含：
+
+- 分镜图
+- 镜头标题
+- 剧情拍点
+- 镜头语言
+- Prompt
+- 角色绑定
+- 场景绑定
+- 风格绑定
+- 生成记录
+- 质检状态
+
+## 5. 导入角色、场景和风格参考
+
+左侧按钮：
+
+- `角色`：导入人物设定图、角色参考图
+- `场景`：导入场景、地点、空间参考图
+- `风格`：导入画风、色彩、构图参考图
+
+导入后，图片会复制到项目资产库中，避免原始文件移动后丢失。
+
+在画布中可以拖拽素材节点。如果把素材节点拖到某个镜头卡片附近，系统会自动把素材绑定到该镜头。
+
+## 6. 画布操作
+
+- 拖拽镜头卡片：调整镜头排布
+- 拖拽画布空白处：移动视图
+- `Ctrl + 鼠标滚轮`：缩放画布
+- `画布 / 紧凑`：切换显示模式
+- 拖拽角色、场景、风格节点：调整参考资产位置并绑定镜头
+
+## 7. 单镜头生成
+
+选择某个镜头卡片后，右侧面板会显示该镜头详情。
+
+点击：
+
+```text
+只生成当前镜头
+```
+
+系统只会生成当前选中的镜头，不会重新生成其他镜头。
+
+适合用于：
+
+- 单张重试
+- 调整 Prompt 后重新生成
+- 检查角色或场景绑定效果
+- 修复失败镜头
+
+## 8. 批量生成
+
+点击左侧：
+
+```text
+批量生成分镜图
+```
+
+系统会按镜头顺序生成图片，并显示：
+
+- 当前镜头
+- 生成进度
+- 已用时间
+- 请求状态
+- 失败原因
+- 重试记录
+
+如果生成时间过长，可以点击：
+
+```text
+取消生成
+```
+
+取消后，任务队列会保留未完成镜头，之后可以点击：
+
+```text
+恢复任务
+```
+
+继续生成未完成部分。
+
+## 9. 生成结果归档
+
+每次生成成功后，系统会保存：
+
+- 图片文件
+- 元数据 JSON
+- Prompt
+- Negative Prompt
+- 镜头 DSL
+- 模型参数
+- Provider 信息
+- 生成时间
+
+生成文件会保存在项目资产目录中，便于后续整理、备份和交付。
+
+## 10. 质检功能
+
+系统包含两类质检：
+
+### 规则质检
+
+默认开启，检查：
+
+- Prompt 是否完整
+- 图片是否生成
+- DSL 是否完整
+- 绑定资产是否可访问
+- 生成是否失败
+- 图片是否已归档
+
+### 视觉模型质检
+
+在项目设置中开启：
+
+```text
+视觉质检：开启
+```
+
+开启后，系统会调用视觉模型检查图片是否符合镜头 DSL 和 Prompt。
+
+注意：视觉质检需要可用的 API Key 和支持图片理解的模型。
+
+## 11. 生产自检
+
+点击：
+
+```text
+运行生产自检
+```
+
+系统会检查：
+
+- API Key 是否配置
+- API 地址是否可用
+- Provider 是否是真实平台
+- 请求超时是否设置
+- 镜头 DSL / Prompt 是否完整
+- 资产路径是否可访问
+- 任务队列是否支持恢复
+- 是否开启视觉质检
+- 是否配置图标、签名和自动更新
+
+自检结果分为：
+
+- `不能投入生产`
+- `可小规模试生产`
+- `生产就绪`
+
+## 12. 常见问题
+
+### 生成一直很久没有结果
+
+检查：
+
+- API Base URL 是否正确
+- API Key 是否有效
+- 模型是否支持图片生成
+- 网络是否能访问接口
+- 超时秒数是否太短
+
+系统会在超时后显示错误日志，不会无限卡住。
+
+### GitHub 推送失败
+
+如果看到 `127.0.0.1` 代理错误，检查 Git 代理：
 
 ```powershell
-git remote add origin https://github.com/<your-org-or-user>/ai-manga-shot-factory.git
-git push -u origin main
+git config --global --get http.proxy
+git config --global --get https.proxy
 ```
 
-Do not commit local production data:
+不需要代理时清除：
 
-- API keys or `.env` files
-- `.shotfactory.json` project files
-- generated `*.shotfactory-assets/` folders
-- `release/` installers
-- Windows signing certificates
+```powershell
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+```
 
-GitHub Actions will run `npm ci`, `npm test`, and `npm run dist` on Windows. For signed production builds, configure these repository secrets:
+### 图片导入失败
+
+检查：
+
+- 文件是否是 `png`、`jpg`、`jpeg`、`webp`
+- 文件路径是否可访问
+- 文件是否被其他程序占用
+- 项目目录是否有写入权限
+
+### 安装包没有签名
+
+代码签名需要正式证书。GitHub Actions 中可配置：
 
 - `WIN_CSC_LINK`
 - `WIN_CSC_KEY_PASSWORD`
 
-For auto-update metadata, configure repository variable:
+不要把证书或密码提交到仓库。
 
-- `SHOT_FACTORY_UPDATE_URL`
+## 13. GitHub Actions 打包
+
+仓库已包含：
+
+```text
+.github/workflows/windows-build.yml
+```
+
+推送到 `main` 后，会自动执行：
+
+```powershell
+npm ci
+npm test
+npm run dist
+```
+
+构建产物会作为 GitHub Actions artifact 上传。
+
+## 14. 注意事项
+
+不要提交以下内容到 GitHub：
+
+- API Key
+- `.env`
+- 生成图片
+- 项目资产库
+- `.shotfactory.json` 项目文件
+- `release/` 安装包
+- 签名证书
+
+这些内容已经在 `.gitignore` 中排除。
